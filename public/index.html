@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FCM Notification Sender</title>
+    <style>
+      /* Inline styles are permitted by the CSP (style-src includes 'unsafe-inline').
+         Scripts must be external (script-src 'self'), see app.js. */
+      :root {
+        --bg: #0f172a;
+        --card: #1e293b;
+        --fg: #e2e8f0;
+        --muted: #94a3b8;
+        --accent: #6366f1;
+        --border: #334155;
+        --field: #0b1220;
+        --ok: #22c55e;
+        --err: #ef4444;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+        line-height: 1.5;
+      }
+      .wrap {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 28px 16px 64px;
+      }
+      h1 {
+        font-size: 1.4rem;
+        margin: 0 0 4px;
+      }
+      p.sub {
+        color: var(--muted);
+        margin: 0 0 24px;
+        font-size: 0.9rem;
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        background: var(--field);
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 16px;
+      }
+      label {
+        display: block;
+        font-size: 0.82rem;
+        color: var(--muted);
+        margin: 12px 0 4px;
+      }
+      input[type='text'],
+      input[type='password'],
+      textarea,
+      select {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--field);
+        color: var(--fg);
+        font-size: 0.92rem;
+        font-family: inherit;
+      }
+      textarea {
+        resize: vertical;
+        min-height: 64px;
+      }
+      input:focus,
+      textarea:focus,
+      select:focus {
+        outline: 2px solid var(--accent);
+        border-color: transparent;
+      }
+      .seg {
+        display: flex;
+        gap: 8px;
+        margin-top: 4px;
+      }
+      .seg button {
+        flex: 1;
+        padding: 8px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--field);
+        color: var(--fg);
+        cursor: pointer;
+        font-size: 0.85rem;
+      }
+      .seg button.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+      .hint {
+        font-size: 0.74rem;
+        color: var(--muted);
+        margin-top: 4px;
+      }
+      .check {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .check input {
+        width: auto;
+      }
+      .check label {
+        margin: 0;
+        color: var(--fg);
+      }
+      .send {
+        margin-top: 18px;
+        width: 100%;
+        padding: 12px;
+        border: none;
+        border-radius: 8px;
+        background: var(--accent);
+        color: #fff;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .send:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .status {
+        font-weight: 600;
+      }
+      .status.ok {
+        color: var(--ok);
+      }
+      .status.err {
+        color: var(--err);
+      }
+      .result {
+        margin-top: 10px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.82rem;
+        background: var(--field);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px;
+        min-height: 40px;
+      }
+      .hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>FCM Notification Sender</h1>
+      <p class="sub">Trigger a push via <code>POST /api/v1/notifications/send</code></p>
+
+      <div class="card">
+        <label for="serverUrl">Server URL (leave blank to use this site)</label>
+        <input id="serverUrl" type="text" autocomplete="off" placeholder="" />
+
+        <label for="apiKey">API key (x-api-key)</label>
+        <input id="apiKey" type="password" autocomplete="off" placeholder="your SERVER_API_KEY" />
+        <div class="check">
+          <input id="remember" type="checkbox" />
+          <label for="remember">Remember key on this device (localStorage)</label>
+        </div>
+      </div>
+
+      <div class="card">
+        <label for="title">Title (1–100)</label>
+        <input id="title" type="text" maxlength="100" placeholder="Build complete" />
+
+        <label for="body">Body (1–500)</label>
+        <textarea
+          id="body"
+          maxlength="500"
+          placeholder="Your build finished successfully"
+        ></textarea>
+
+        <label>Target</label>
+        <div class="seg" id="seg">
+          <button type="button" data-target="token" class="active">Single token</button>
+          <button type="button" data-target="tokens">Multiple tokens</button>
+          <button type="button" data-target="topic">Topic</button>
+        </div>
+
+        <div id="field-token">
+          <label for="token">Device token</label>
+          <input id="token" type="text" placeholder="DEVICE_FCM_TOKEN" />
+        </div>
+        <div id="field-tokens" class="hidden">
+          <label for="tokens">Device tokens (one per line or comma-separated, max 500)</label>
+          <textarea id="tokens" placeholder="TOKEN_1&#10;TOKEN_2"></textarea>
+        </div>
+        <div id="field-topic" class="hidden">
+          <label for="topic">Topic</label>
+          <input id="topic" type="text" placeholder="news" />
+          <div class="hint">Allowed characters: letters, digits, and - _ . ~ %</div>
+        </div>
+
+        <label for="data">Data (optional JSON — every value must be a string)</label>
+        <textarea id="data" placeholder='{ "type": "build", "id": "42" }'></textarea>
+
+        <button id="send" class="send" type="button">Send notification</button>
+      </div>
+
+      <div class="card">
+        <div class="status" id="status">Ready.</div>
+        <div class="result" id="result">—</div>
+      </div>
+    </div>
+    <script src="app.js"></script>
+  </body>
+</html>

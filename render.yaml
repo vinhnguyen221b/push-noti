@@ -1,0 +1,45 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+#
+# Deploy:
+#   1. Push this repo to GitHub/GitLab.
+#   2. Render dashboard → New + → Blueprint → select the repo (Render reads this file).
+#   3. Set the two secret env vars (marked `sync: false`) in the dashboard:
+#        - SERVER_API_KEY
+#        - FIREBASE_SERVICE_ACCOUNT_BASE64
+#   4. Create the service. Render runs the build & start commands below.
+#
+# Render injects PORT automatically; the server binds to it (env.ts reads PORT).
+services:
+  - type: web
+    name: fcm-notification-service
+    runtime: node
+    plan: free # change to "starter" (paid) to avoid free-tier cold starts
+    region: oregon # or: frankfurt | singapore | ohio | virginia
+    branch: main # change if you deploy from a different branch
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: '20'
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      # Render terminates TLS at its proxy (one hop). Tell express-rate-limit to
+      # read the real client IP from X-Forwarded-For.
+      - key: TRUST_PROXY
+        value: '1'
+      - key: RATE_LIMIT_WINDOW_MS
+        value: '60000'
+      - key: RATE_LIMIT_MAX
+        value: '60'
+      # Set to "false" for a headless, API-only deployment (no browser UI).
+      - key: ENABLE_UI
+        value: 'true'
+      # ── Secrets — set these in the Render dashboard, never commit them ──
+      - key: SERVER_API_KEY
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_BASE64
+        sync: false
