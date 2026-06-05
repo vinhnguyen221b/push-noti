@@ -1,6 +1,6 @@
 # Render Blueprint — https://render.com/docs/blueprint-spec
 #
-# Deploy:
+# Deploy (so render.yaml is actually applied):
 #   1. Push this repo to GitHub/GitLab.
 #   2. Render dashboard → New + → Blueprint → select the repo (Render reads this file).
 #   3. Set the two secret env vars (marked `sync: false`) in the dashboard:
@@ -8,7 +8,14 @@
 #        - FIREBASE_SERVICE_ACCOUNT_BASE64
 #   4. Create the service. Render runs the build & start commands below.
 #
+# IMPORTANT: this file's buildCommand only applies to services created via the
+# Blueprint flow above. If you created the Web Service MANUALLY, Render's default
+# build command is just `npm install` (it does NOT compile TypeScript), so
+# dist/server.js never exists and start fails with "Cannot find module dist/server.js".
+# Fix: set the Build Command below in Settings → Build & Deploy.
+#
 # Render injects PORT automatically; the server binds to it (env.ts reads PORT).
+# `--include=dev` forces devDependencies (typescript) even though NODE_ENV=production.
 services:
   - type: web
     name: fcm-notification-service
@@ -16,7 +23,7 @@ services:
     plan: free # change to "starter" (paid) to avoid free-tier cold starts
     region: oregon # or: frankfurt | singapore | ohio | virginia
     branch: main # change if you deploy from a different branch
-    buildCommand: npm ci --include=dev && npm run build
+    buildCommand: npm install --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /health
     autoDeploy: true

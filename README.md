@@ -342,6 +342,24 @@ Render builds with `npm ci --include=dev && npm run build`, runs `npm start`, in
 - On Render, use the **base64** credential form — there is no `secrets/` directory in the
   deployed repo.
 
+### Troubleshooting
+
+**`Error: Cannot find module '/opt/render/project/src/dist/server.js'`** (start crashes,
+"No open ports detected"). The TypeScript was not compiled during build, so `dist/` is
+missing (it is git-ignored and must be built on Render). This means the **Build Command
+did not run `npm run build`** — usually because the service was created manually, so
+Render used its default `npm install`.
+
+Fix it in the Render dashboard → **Settings → Build & Deploy**:
+
+- **Build Command:** `npm install --include=dev && npm run build`
+- **Start Command:** `npm start`
+
+then **Manual Deploy → Clear build cache & deploy**. (`--include=dev` is required because
+`NODE_ENV=production` otherwise skips `typescript`, which lives in devDependencies.)
+Alternatively, recreate the service via **New + → Blueprint** so `render.yaml` supplies
+these automatically.
+
 ---
 
 ## Secret handling
