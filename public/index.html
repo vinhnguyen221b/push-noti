@@ -3,167 +3,436 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>FCM Notification Sender</title>
+    <title>FCM // NOTIFICATION UPLINK</title>
+    <!-- helmet default CSP allows https stylesheets/fonts + inline styles; scripts stay external (app.js). -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap"
+      rel="stylesheet"
+    />
     <style>
       /* Inline styles are permitted by the CSP (style-src includes 'unsafe-inline').
          Scripts must be external (script-src 'self'), see app.js. */
       :root {
-        --bg: #0f172a;
-        --card: #1e293b;
-        --fg: #e2e8f0;
-        --muted: #94a3b8;
-        --accent: #6366f1;
-        --border: #334155;
-        --field: #0b1220;
-        --ok: #22c55e;
-        --err: #ef4444;
+        --bg: #05070d;
+        --panel: rgba(10, 16, 28, 0.92);
+        --field: rgba(0, 234, 255, 0.04);
+        --fg: #d6f7ff;
+        --muted: #5d7d96;
+        --cyan: #00eaff;
+        --pink: #ff2bd6;
+        --yellow: #f5ff5a;
+        --ok: #2bff88;
+        --err: #ff3b5c;
+        --line: rgba(0, 234, 255, 0.22);
       }
       * {
         box-sizing: border-box;
       }
+      html {
+        scrollbar-color: var(--cyan) transparent;
+      }
       body {
         margin: 0;
-        font-family:
-          ui-sans-serif,
-          system-ui,
-          -apple-system,
-          'Segoe UI',
-          Roboto,
-          sans-serif;
-        background: var(--bg);
+        min-height: 100vh;
+        font-family: 'Rajdhani', ui-sans-serif, system-ui, sans-serif;
         color: var(--fg);
         line-height: 1.5;
+        background:
+          radial-gradient(circle at 12% -10%, rgba(0, 234, 255, 0.16), transparent 42%),
+          radial-gradient(circle at 95% 110%, rgba(255, 43, 214, 0.16), transparent 45%),
+          linear-gradient(rgba(0, 234, 255, 0.04) 1px, transparent 1px) 0 0 / 44px 44px,
+          linear-gradient(90deg, rgba(0, 234, 255, 0.04) 1px, transparent 1px) 0 0 / 44px 44px,
+          var(--bg);
+        background-attachment: fixed;
+      }
+      /* Scanline + vignette overlay. */
+      body::after {
+        content: '';
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 9;
+        background: repeating-linear-gradient(
+          0deg,
+          rgba(0, 0, 0, 0.18) 0,
+          rgba(0, 0, 0, 0.18) 1px,
+          transparent 2px,
+          transparent 4px
+        );
+        mix-blend-mode: multiply;
+        opacity: 0.6;
       }
       .wrap {
-        max-width: 720px;
+        position: relative;
+        z-index: 1;
+        max-width: 760px;
         margin: 0 auto;
-        padding: 28px 16px 64px;
+        padding: 36px 18px 72px;
+      }
+
+      /* ── HEADER / HUD ───────────────────────────────────── */
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 0.72rem;
+        letter-spacing: 0.18em;
+        color: var(--muted);
+        text-transform: uppercase;
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 10px;
+        margin-bottom: 26px;
+      }
+      .online {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--ok);
+      }
+      .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--ok);
+        box-shadow: 0 0 10px var(--ok), 0 0 4px var(--ok);
+        animation: pulse 1.4s ease-in-out infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.35; transform: scale(0.7); }
+      }
+      .hero {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        margin-bottom: 6px;
+      }
+      .bot {
+        font-size: 2.6rem;
+        line-height: 1;
+        filter: drop-shadow(0 0 10px rgba(0, 234, 255, 0.7));
+        animation: float 4s ease-in-out infinite;
+      }
+      @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-5px); }
       }
       h1 {
-        font-size: 1.4rem;
-        margin: 0 0 4px;
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 900;
+        font-size: clamp(1.4rem, 5vw, 2.05rem);
+        letter-spacing: 0.04em;
+        margin: 0;
+        color: #fff;
+        text-shadow: 0 0 12px rgba(0, 234, 255, 0.8), 0 0 26px rgba(0, 234, 255, 0.35);
+      }
+      h1 .accent {
+        color: var(--pink);
+        text-shadow: 0 0 12px rgba(255, 43, 214, 0.85), 0 0 26px rgba(255, 43, 214, 0.4);
       }
       p.sub {
+        font-family: 'Share Tech Mono', monospace;
         color: var(--muted);
-        margin: 0 0 24px;
-        font-size: 0.9rem;
+        margin: 0 0 30px;
+        font-size: 0.82rem;
+        letter-spacing: 0.04em;
+        padding-left: 78px;
       }
       code {
-        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-        background: var(--field);
-        padding: 1px 5px;
-        border-radius: 4px;
+        font-family: 'Share Tech Mono', monospace;
+        color: var(--cyan);
+        background: rgba(0, 234, 255, 0.08);
+        border: 1px solid var(--line);
+        padding: 1px 6px;
       }
-      .card {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 16px;
+
+      /* ── PANELS ─────────────────────────────────────────── */
+      .panel {
+        position: relative;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-top: 2px solid var(--cyan);
+        padding: 22px 24px 26px;
+        margin-bottom: 22px;
+        box-shadow:
+          inset 0 0 30px rgba(0, 234, 255, 0.04),
+          0 0 22px rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(2px);
       }
+      /* HUD corner brackets. */
+      .panel::before,
+      .panel::after {
+        content: '';
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        pointer-events: none;
+      }
+      .panel::before {
+        top: -2px;
+        left: -1px;
+        border-left: 2px solid var(--cyan);
+        border-top: 2px solid var(--cyan);
+        box-shadow: -2px -2px 8px rgba(0, 234, 255, 0.4);
+      }
+      .panel::after {
+        bottom: -1px;
+        right: -1px;
+        border-right: 2px solid var(--pink);
+        border-bottom: 2px solid var(--pink);
+        box-shadow: 2px 2px 8px rgba(255, 43, 214, 0.4);
+      }
+      .panel-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 700;
+        font-size: 0.82rem;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--cyan);
+        margin-bottom: 6px;
+      }
+      .panel-head .idx {
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 0.7rem;
+        color: var(--bg);
+        background: var(--cyan);
+        padding: 1px 6px;
+        font-weight: 400;
+        box-shadow: 0 0 10px rgba(0, 234, 255, 0.6);
+      }
+      .panel-head .rule {
+        flex: 1;
+        height: 1px;
+        background: linear-gradient(90deg, var(--line), transparent);
+      }
+
+      /* ── FIELDS ─────────────────────────────────────────── */
       label {
         display: block;
-        font-size: 0.82rem;
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 0.72rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
         color: var(--muted);
-        margin: 12px 0 4px;
+        margin: 16px 0 6px;
+      }
+      label::before {
+        content: '▸ ';
+        color: var(--cyan);
       }
       input[type='text'],
       input[type='password'],
-      textarea,
-      select {
+      textarea {
         width: 100%;
-        padding: 10px 12px;
-        border-radius: 8px;
-        border: 1px solid var(--border);
+        padding: 11px 13px;
+        border: 1px solid var(--line);
+        border-radius: 0;
         background: var(--field);
         color: var(--fg);
-        font-size: 0.92rem;
-        font-family: inherit;
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 0.9rem;
+        caret-color: var(--cyan);
+        transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+      }
+      input::placeholder,
+      textarea::placeholder {
+        color: rgba(93, 125, 150, 0.65);
       }
       textarea {
         resize: vertical;
-        min-height: 64px;
+        min-height: 72px;
       }
       input:focus,
-      textarea:focus,
-      select:focus {
-        outline: 2px solid var(--accent);
-        border-color: transparent;
+      textarea:focus {
+        outline: none;
+        border-color: var(--cyan);
+        background: rgba(0, 234, 255, 0.07);
+        box-shadow: 0 0 0 1px var(--cyan), 0 0 16px rgba(0, 234, 255, 0.35);
       }
+
+      /* ── SEGMENTED TARGET CONTROL ───────────────────────── */
       .seg {
         display: flex;
-        gap: 8px;
-        margin-top: 4px;
+        gap: 10px;
+        margin-top: 6px;
       }
       .seg button {
         flex: 1;
-        padding: 8px;
-        border-radius: 8px;
-        border: 1px solid var(--border);
+        padding: 10px;
+        border: 1px solid var(--line);
         background: var(--field);
-        color: var(--fg);
+        color: var(--muted);
         cursor: pointer;
-        font-size: 0.85rem;
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+        transition: color 0.15s, background 0.15s, box-shadow 0.15s, border-color 0.15s;
+      }
+      .seg button:hover {
+        color: var(--fg);
+        border-color: var(--cyan);
       }
       .seg button.active {
-        background: var(--accent);
-        border-color: var(--accent);
-        color: #fff;
+        background: linear-gradient(135deg, var(--cyan), var(--pink));
+        border-color: transparent;
+        color: var(--bg);
+        font-weight: 700;
+        box-shadow: 0 0 18px rgba(0, 234, 255, 0.5);
       }
       .hint {
-        font-size: 0.74rem;
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 0.7rem;
         color: var(--muted);
-        margin-top: 4px;
+        margin-top: 6px;
       }
+
+      /* ── CUSTOM CHECKBOX ────────────────────────────────── */
       .check {
         display: flex;
         align-items: center;
-        gap: 8px;
-        margin-top: 12px;
+        gap: 10px;
+        margin-top: 16px;
       }
       .check input {
-        width: auto;
+        appearance: none;
+        -webkit-appearance: none;
+        width: 18px;
+        height: 18px;
+        margin: 0;
+        border: 1px solid var(--cyan);
+        background: transparent;
+        cursor: pointer;
+        position: relative;
+        flex: none;
+        transition: box-shadow 0.15s, background 0.15s;
+      }
+      .check input:checked {
+        background: var(--cyan);
+        box-shadow: 0 0 12px rgba(0, 234, 255, 0.7);
+      }
+      .check input:checked::after {
+        content: '';
+        position: absolute;
+        left: 5px;
+        top: 1px;
+        width: 5px;
+        height: 10px;
+        border: solid var(--bg);
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
       }
       .check label {
         margin: 0;
+        text-transform: none;
+        font-size: 0.78rem;
         color: var(--fg);
-      }
-      .send {
-        margin-top: 18px;
-        width: 100%;
-        padding: 12px;
-        border: none;
-        border-radius: 8px;
-        background: var(--accent);
-        color: #fff;
-        font-size: 1rem;
-        font-weight: 600;
         cursor: pointer;
       }
-      .send:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
+      .check label::before {
+        content: '';
       }
+
+      /* ── TRANSMIT BUTTON ────────────────────────────────── */
+      .send {
+        position: relative;
+        margin-top: 24px;
+        width: 100%;
+        padding: 15px;
+        border: none;
+        background: linear-gradient(135deg, var(--cyan), var(--pink));
+        color: var(--bg);
+        font-family: 'Orbitron', sans-serif;
+        font-size: 1rem;
+        font-weight: 900;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        cursor: pointer;
+        overflow: hidden;
+        clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+        box-shadow: 0 0 24px rgba(0, 234, 255, 0.4);
+        transition: box-shadow 0.2s, transform 0.05s;
+      }
+      .send::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -120%;
+        width: 60%;
+        height: 100%;
+        background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+        transition: left 0.5s;
+      }
+      .send:hover {
+        box-shadow: 0 0 36px rgba(255, 43, 214, 0.6), 0 0 18px rgba(0, 234, 255, 0.6);
+      }
+      .send:hover::before {
+        left: 130%;
+      }
+      .send:active {
+        transform: translateY(1px);
+      }
+      .send:disabled {
+        filter: grayscale(0.7) brightness(0.7);
+        cursor: not-allowed;
+        box-shadow: none;
+      }
+
+      /* ── OUTPUT TERMINAL ────────────────────────────────── */
       .status {
-        font-weight: 600;
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 0.82rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--cyan);
+      }
+      .status::before {
+        content: '► ';
+      }
+      .status::after {
+        content: '_';
+        animation: blink 1s steps(1) infinite;
+      }
+      @keyframes blink {
+        50% { opacity: 0; }
       }
       .status.ok {
         color: var(--ok);
+        text-shadow: 0 0 10px rgba(43, 255, 136, 0.5);
       }
       .status.err {
         color: var(--err);
+        text-shadow: 0 0 10px rgba(255, 59, 92, 0.5);
       }
       .result {
-        margin-top: 10px;
+        margin-top: 12px;
         white-space: pre-wrap;
         word-break: break-word;
-        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-        font-size: 0.82rem;
-        background: var(--field);
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 12px;
-        min-height: 40px;
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 0.8rem;
+        color: var(--fg);
+        background: rgba(0, 0, 0, 0.45);
+        border: 1px solid var(--line);
+        border-left: 2px solid var(--pink);
+        padding: 14px;
+        min-height: 48px;
+      }
+      .endline {
+        text-align: center;
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 0.7rem;
+        letter-spacing: 0.3em;
+        color: var(--muted);
+        margin-top: 30px;
+        text-transform: uppercase;
+        opacity: 0.6;
       }
       .hidden {
         display: none;
@@ -172,22 +441,31 @@
   </head>
   <body>
     <div class="wrap">
-      <h1>FCM Notification Sender</h1>
-      <p class="sub">Trigger a push via <code>POST /api/v1/notifications/send</code></p>
+      <div class="topbar">
+        <span>FCM::CONTROL_DECK</span>
+        <span class="online"><span class="dot"></span>System Online</span>
+      </div>
 
-      <div class="card">
-        <label for="serverUrl">Server URL (leave blank to use this site)</label>
-        <input id="serverUrl" type="text" autocomplete="off" placeholder="" />
+      <div class="hero">
+        <span class="bot" aria-hidden="true">🤖</span>
+        <h1>FCM <span class="accent">//</span> UPLINK</h1>
+      </div>
+      <p class="sub">// transmit push payload → <code>POST /api/v1/notifications/send</code></p>
+
+      <div class="panel">
+        <div class="panel-head"><span class="idx">01</span>Authentication<span class="rule"></span></div>
 
         <label for="apiKey">API key (x-api-key)</label>
         <input id="apiKey" type="password" autocomplete="off" placeholder="your SERVER_API_KEY" />
         <div class="check">
           <input id="remember" type="checkbox" />
-          <label for="remember">Remember key on this device (localStorage)</label>
+          <label for="remember">Cache key on this device (localStorage)</label>
         </div>
       </div>
 
-      <div class="card">
+      <div class="panel">
+        <div class="panel-head"><span class="idx">02</span>Payload<span class="rule"></span></div>
+
         <label for="title">Title (1–100)</label>
         <input id="title" type="text" maxlength="100" placeholder="Build complete" />
 
@@ -198,11 +476,10 @@
           placeholder="Your build finished successfully"
         ></textarea>
 
-        <label>Target</label>
+        <label>Target vector</label>
         <div class="seg" id="seg">
           <button type="button" data-target="token" class="active">Single token</button>
           <button type="button" data-target="tokens">Multiple tokens</button>
-          <button type="button" data-target="topic">Topic</button>
         </div>
 
         <div id="field-token">
@@ -213,22 +490,20 @@
           <label for="tokens">Device tokens (one per line or comma-separated, max 500)</label>
           <textarea id="tokens" placeholder="TOKEN_1&#10;TOKEN_2"></textarea>
         </div>
-        <div id="field-topic" class="hidden">
-          <label for="topic">Topic</label>
-          <input id="topic" type="text" placeholder="news" />
-          <div class="hint">Allowed characters: letters, digits, and - _ . ~ %</div>
-        </div>
 
         <label for="data">Data (optional JSON — every value must be a string)</label>
         <textarea id="data" placeholder='{ "type": "build", "id": "42" }'></textarea>
 
-        <button id="send" class="send" type="button">Send notification</button>
+        <button id="send" class="send" type="button">⟫ Transmit</button>
       </div>
 
-      <div class="card">
-        <div class="status" id="status">Ready.</div>
+      <div class="panel">
+        <div class="panel-head"><span class="idx">03</span>Output<span class="rule"></span></div>
+        <div class="status" id="status">Ready</div>
         <div class="result" id="result">—</div>
       </div>
+
+      <div class="endline">— end of line —</div>
     </div>
     <script src="app.js"></script>
   </body>

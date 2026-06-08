@@ -4,14 +4,12 @@
 
   var SEND_PATH = '/api/v1/notifications/send';
   var ids = [
-    'serverUrl',
     'apiKey',
     'remember',
     'title',
     'body',
     'token',
     'tokens',
-    'topic',
     'data',
     'send',
     'status',
@@ -25,16 +23,12 @@
 
   var currentTarget = 'token';
 
-  // Restore a previously-remembered key / server URL.
+  // Restore a previously-remembered key.
   try {
     var savedKey = localStorage.getItem('fcm.apiKey');
-    var savedUrl = localStorage.getItem('fcm.serverUrl');
     if (savedKey) {
       el.apiKey.value = savedKey;
       el.remember.checked = true;
-    }
-    if (savedUrl) {
-      el.serverUrl.value = savedUrl;
     }
   } catch (e) {
     /* localStorage may be unavailable (private mode) — ignore. */
@@ -52,7 +46,6 @@
       document
         .getElementById('field-tokens')
         .classList.toggle('hidden', currentTarget !== 'tokens');
-      document.getElementById('field-topic').classList.toggle('hidden', currentTarget !== 'topic');
     });
   });
 
@@ -62,9 +55,6 @@
   }
 
   function buildTarget() {
-    if (currentTarget === 'token') {
-      return { token: el.token.value.trim() };
-    }
     if (currentTarget === 'tokens') {
       var list = el.tokens.value
         .split(/[\n,]/)
@@ -74,7 +64,7 @@
         .filter(Boolean);
       return { tokens: list };
     }
-    return { topic: el.topic.value.trim() };
+    return { token: el.token.value.trim() };
   }
 
   function buildPayload() {
@@ -90,14 +80,12 @@
     setStatus('Sending…');
     el.result.textContent = '—';
 
-    // Persist or clear the key/url per the "remember" checkbox.
+    // Persist or clear the key per the "remember" checkbox.
     try {
       if (el.remember.checked) {
         localStorage.setItem('fcm.apiKey', el.apiKey.value);
-        localStorage.setItem('fcm.serverUrl', el.serverUrl.value.trim());
       } else {
         localStorage.removeItem('fcm.apiKey');
-        localStorage.removeItem('fcm.serverUrl');
       }
     } catch (e) {
       /* ignore storage errors */
@@ -112,8 +100,7 @@
       return;
     }
 
-    var base = el.serverUrl.value.trim() || window.location.origin;
-    var url = base.replace(/\/+$/, '') + SEND_PATH;
+    var url = window.location.origin.replace(/\/+$/, '') + SEND_PATH;
 
     el.send.disabled = true;
     fetch(url, {
